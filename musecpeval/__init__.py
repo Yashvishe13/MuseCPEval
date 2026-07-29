@@ -15,8 +15,13 @@ pull in librosa or mir_eval, and ``python -m musecpeval.metrics.<name>`` still
 runs a family's own directory-scoring CLI without double-import warnings.
 """
 from importlib import import_module
+from importlib.metadata import PackageNotFoundError, version as _dist_version
 
-__version__ = "0.1.0"
+try:
+    # The version lives in pyproject.toml; don't duplicate it here.
+    __version__ = _dist_version("musecpeval")
+except PackageNotFoundError:  # running from a source tree, not installed
+    __version__ = "0+unknown"
 
 _LAZY = {
     "harmony_score": "musecpeval.metrics.harmony_tonality",

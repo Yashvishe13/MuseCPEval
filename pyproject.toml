@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]  # PEP 639 license expression support
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,8 +7,10 @@ name = "musecpeval"
 version = "0.1.0"
 description = "Music context preservation metrics: how much of an original's harmony, rhythm, structure, and melody survives an edit"
 readme = "README.md"
-license = { file = "LICENSE" }
-requires-python = ">=3.9,<3.13"
+authors = [{ name = "Yash Vishe", email = "yashvisheyav@gmail.com" }]
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.9"
 keywords = ["music", "mir", "audio", "evaluation", "metrics"]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -31,6 +33,11 @@ structure = ["msaf>=0.1.85"]
 
 [project.scripts]
 musecpeval = "musecpeval.runner:main"
+
+[project.urls]
+Homepage = "https://github.com/Yashvishe13/MuseCPEval"
+Repository = "https://github.com/Yashvishe13/MuseCPEval"
+Issues = "https://github.com/Yashvishe13/MuseCPEval/issues"
 
 [tool.setuptools.packages.find]
 include = ["musecpeval*"]
