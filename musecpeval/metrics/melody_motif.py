@@ -2,7 +2,7 @@ from typing import Dict, List, Set, Tuple
 import numpy as np
 import librosa
 from scipy.spatial.distance import cdist
-from utils import _safe_float
+from .utils import _safe_float
 import sys
 from pathlib import Path
 from collections import defaultdict
