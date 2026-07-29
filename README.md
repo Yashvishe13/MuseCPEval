@@ -37,7 +37,6 @@ Verify:
 
 ```bash
 python runner.py --ref path/to/file.wav --est path/to/file.wav
-# same file twice -> every similarity 1.0
 ```
 
 ## Run
@@ -54,9 +53,6 @@ python runner.py --ref original.wav --est edited.wav --out-json result.json
 # a subset of metrics
 python runner.py --ref original.wav --est edited.wav --metrics harmony rhythm
 ```
-
-Exits non-zero if either file is missing. A metric family that fails is reported as
-`{"error": ...}` under its own key so the others still return.
 
 ### Batch
 
@@ -76,26 +72,12 @@ python runner.py --ref-dir originals/ --est-dir edited/ --output-dir results/
 python runner.py --ref-dir originals/ --est-dir edited/ --recursive --output-dir results/
 ```
 
-**JSON manifest** — a list of objects, or `{"pairs": [...]}`. `ref` and `est` are
-required; `id` (or `song_id`) is optional; any other field is copied through onto the
-output record, which is useful for grouping later:
-
 ```json
 [
   {"ref": "originals/001.wav", "est": "edited/harmony/-3semitone/001.wav",
    "id": "harmony/-3semitone/001", "section": "harmony", "n_steps": -3}
 ]
 ```
-
-**CSV manifest** — same idea, one header row: `ref,est,id,section,...`
-
-**Directory pairing** — files sharing a name are paired, and the filename stem becomes
-the `id`. `--ext` changes the extension (default `.wav`). Plain mode is flat; with
-`--recursive`, `--est-dir` is walked and each edit is matched against `--ref-dir` first
-by mirrored relative path and then by bare filename, so a nested edit tree can be
-compared against a flat directory of originals. Recursive ids are the relative path
-without extension (`harmony/-3semitone/001`), which keeps pairs distinct when every
-subdirectory reuses the same filenames.
 
 ### Output
 
@@ -150,41 +132,6 @@ Worker count is capped at the number of pairs.
 | `1` | a pair failed, a metric family failed, or a score was degraded — or bad arguments |
 | `130` | interrupted; partial results kept and resumable |
 
-## Degraded structure scores
-
-`structural_form` warns instead of raising when msaf segmentation and then its
-uniform-grid fallback both fail on a file. It then scores against a dummy segment, so
-the number it returns is meaningless — but nothing in the returned dict distinguishes
-it from a real score.
-
-The runner detects that warning and lists the affected family under
-`degraded_metrics` on the record, counts it in the run summary, and marks it in the
-progress line. Treat any record carrying `degraded_metrics` as unscored:
-
-```json
-{"key": "…", "structural_form": {"pairwise_f": 0.662, "ari": 0.0},
- "degraded_metrics": ["structural_form"]}
-```
-
-## Performance
-
-Batch parallelism is process-based (spawn), with BLAS threads pinned to one per worker
-so N workers do not oversubscribe the cores. Measured runtimes:
-
-| Workload | Workers | Wall |
-|---|---|---|
-| 32 pairs of 10s audio | 1 | 111s |
-| 32 pairs of 10s audio | 8 | 18s |
-| 32 pairs of 10s audio | 32 | 8.7s |
-| 400 pairs, 37s–1782s audio, structure + melody | 48 | 778s |
-
-Cost scales with audio duration, so a few long files can dominate a run — in the
-400-pair job above, one 1782s track's edits were the last thing running for roughly
-15 minutes. Consider giving unusually long files their own job.
-
-Batch and single mode agree to within ~1e-9. The difference is real but not
-meaningful: workers run single-threaded BLAS while single mode does not, which changes
-floating-point accumulation order in the DTW cosine. Most values are bit-identical.
 
 ## Repository layout
 
@@ -198,15 +145,3 @@ musecpeval_metrics/    the four metric families
   utils.py             shared helpers
 requirements.txt
 ```
-
-`musecpeval_metrics/` is not an importable package — it has no `__init__.py` and its
-modules import each other flatly (`from utils import ...`). `runner.py` therefore adds
-the directory to `sys.path` rather than importing it as a package. Keep that insert at
-module scope: batch workers are spawned and re-import the module before the metric
-imports run.
-
-Each metric module also has its own `__main__` block that scores a directory of pairs
-for that family alone, independent of `runner.py`. Beware that the flag spelling is not
-consistent between them: `rhythm_meter.py` takes `--orig-dir` / `--edit-dir`, while
-`harmony_tonality.py`, `melody_motif.py`, and `structural_form.py` take `--orig_dir` /
-`--edit_dir`.
