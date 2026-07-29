@@ -30,11 +30,29 @@ newer numpy — so a dedicated environment is the least painful route:
 conda create -y -n musecpeval python=3.10
 conda activate musecpeval
 
-pip install musecpeval          # or: pip install .        from a clone
-                                # or: pip install -e .     to work on the metrics
+pip install musecpeval==0.1.0
 ```
 
-That installs the `musecpeval` command and the importable package:
+Pinning the version is the recommended form — the metric numbers are what you cite, so
+you want them reproducible. `pip install musecpeval` takes the newest release instead.
+Published at [pypi.org/project/musecpeval](https://pypi.org/project/musecpeval/).
+
+<details>
+<summary>Installing from GitHub instead</summary>
+
+For an unreleased change, or to work on the metrics:
+
+```bash
+pip install "git+https://github.com/Yashvishe13/MuseCPEval.git"   # straight from main
+pip install "git+https://github.com/Yashvishe13/MuseCPEval.git@v0.1.0"  # at a tag
+
+git clone https://github.com/Yashvishe13/MuseCPEval.git && cd MuseCPEval
+pip install .                   # from a clone
+pip install -e .                # editable, so edits to the metrics take effect
+```
+</details>
+
+Either way you get the `musecpeval` command and the importable package:
 
 ```python
 from musecpeval import harmony_score, melody_score, rhythm_score, structural_score
