@@ -40,19 +40,6 @@ python runner.py --ref path/to/file.wav --est path/to/file.wav
 # same file twice -> every similarity 1.0
 ```
 
-Notes on dependencies:
-
-- **`msaf` is required for `--metrics structure`**, not optional. Without it the
-  structure metric raises `ModuleNotFoundError` rather than silently degrading.
-  A bare `import msaf` fails with `cannot import name 'inf' from 'scipy'`; that is
-  expected and harmless, because `structural_form.py` patches `scipy.inf` before
-  importing it. The other three metrics work without msaf.
-- `essentia` and `madmom` appear in `requirements.txt` but are not imported by any
-  current metric module. You can skip them.
-- Do **not** apply the legacy `np.bool = bool` / `np.float = float` aliases that older
-  scripts in this project use. Under numpy 2.x they corrupt `numpy.ma` and every
-  `scipy.spatial` import then fails.
-
 ## Run
 
 ### Single pair
