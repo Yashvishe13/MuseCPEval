@@ -23,22 +23,36 @@ That is a quick way to confirm an install is sane.
 
 ## Install
 
-The metric code needs **numpy ≤ 2.2** — librosa depends on numba, and numba refuses
-newer numpy. A dedicated environment is the least painful route:
+`musecpeval` is a pip-installable package. The metric code needs **numpy ≤ 2.2** —
+librosa depends on numba, and numba refuses newer numpy — so a dedicated environment
+is the least painful route:
 
 ```bash
 conda create -y -n musecpeval python=3.10
 conda activate musecpeval
-pip install "numpy<2.3" "scipy>=1.9" "librosa>=0.10" "soundfile>=0.12" "mir_eval>=0.7" tqdm
-pip install msaf                      # required by the structure metric
+
+pip install .                  # from a clone
+pip install ".[structure]"     # ...plus msaf, needed by the structure metric
+pip install -e ".[structure]"  # ...editable, for working on the metrics
+```
+
+Installing puts a `musecpeval` command on your PATH and makes the package importable:
+
+```python
+from musecpeval import harmony_score, melody_score, rhythm_score, structural_score
+
+harmony_score("original.wav", "edited.wav")
 ```
 
 Verify:
 
 ```bash
-python runner.py --ref path/to/file.wav --est path/to/file.wav
+musecpeval --ref path/to/file.wav --est path/to/file.wav
 # same file twice -> every similarity 1.0
 ```
+
+`python -m musecpeval` is equivalent to the `musecpeval` command, and `python runner.py`
+still works from a clone without installing anything.
 
 Notes on dependencies:
 
@@ -46,9 +60,8 @@ Notes on dependencies:
   structure metric raises `ModuleNotFoundError` rather than silently degrading.
   A bare `import msaf` fails with `cannot import name 'inf' from 'scipy'`; that is
   expected and harmless, because `structural_form.py` patches `scipy.inf` before
-  importing it. The other three metrics work without msaf.
-- `essentia` and `madmom` appear in `requirements.txt` but are not imported by any
-  current metric module. You can skip them.
+  importing it. The other three metrics work without msaf, which is why it lives in
+  the `structure` extra rather than the base dependencies.
 - Do **not** apply the legacy `np.bool = bool` / `np.float = float` aliases that older
   scripts in this project use. Under numpy 2.x they corrupt `numpy.ma` and every
   `scipy.spatial` import then fails.
@@ -59,13 +72,13 @@ Notes on dependencies:
 
 ```bash
 # JSON to stdout
-python runner.py --ref original.wav --est edited.wav
+musecpeval --ref original.wav --est edited.wav
 
 # JSON to a file
-python runner.py --ref original.wav --est edited.wav --out-json result.json
+musecpeval --ref original.wav --est edited.wav --out-json result.json
 
 # a subset of metrics
-python runner.py --ref original.wav --est edited.wav --metrics harmony rhythm
+musecpeval --ref original.wav --est edited.wav --metrics harmony rhythm
 ```
 
 Exits non-zero if either file is missing. A metric family that fails is reported as
@@ -77,16 +90,16 @@ Exactly one input source is required.
 
 ```bash
 # JSON manifest
-python runner.py --batch-json pairs.json --output-dir results/
+musecpeval --batch-json pairs.json --output-dir results/
 
 # CSV manifest
-python runner.py --batch-csv pairs.csv --output-dir results/
+musecpeval --batch-csv pairs.csv --output-dir results/
 
 # two flat directories, paired by filename
-python runner.py --ref-dir originals/ --est-dir edited/ --output-dir results/
+musecpeval --ref-dir originals/ --est-dir edited/ --output-dir results/
 
 # nested edits (edited/<section>/<slug>/001.wav) against flat originals
-python runner.py --ref-dir originals/ --est-dir edited/ --recursive --output-dir results/
+musecpeval --ref-dir originals/ --est-dir edited/ --recursive --output-dir results/
 ```
 
 **JSON manifest** — a list of objects, or `{"pairs": [...]}`. `ref` and `est` are
@@ -202,24 +215,32 @@ floating-point accumulation order in the DTW cosine. Most values are bit-identic
 ## Repository layout
 
 ```
-runner.py              CLI: single-pair and batch evaluation
-musecpeval_metrics/    the four metric families
-  harmony_tonality.py  key relatedness, chroma similarity
-  rhythm_meter.py      tempo delta, beat F-measure
-  structural_form.py   segmentation agreement (needs msaf)
-  melody_motif.py      contour DTW, motif n-gram recall
-  utils.py             shared helpers
-requirements.txt
+musecpeval/
+  __init__.py          lazily re-exports the four scoring functions
+  __main__.py          `python -m musecpeval`
+  runner.py            CLI: single-pair and batch evaluation
+  metrics/
+    harmony_tonality.py  key relatedness, chroma similarity
+    rhythm_meter.py      tempo delta, beat F-measure
+    structural_form.py   segmentation agreement (needs msaf)
+    melody_motif.py      contour DTW, motif n-gram recall
+    utils.py             shared helpers
+pyproject.toml         packaging: deps, extras, `musecpeval` entry point
+requirements.txt       mirror of the dependency list, for `pip install -r`
+runner.py              back-compat shim for `python runner.py`
 ```
 
-`musecpeval_metrics/` is not an importable package — it has no `__init__.py` and its
-modules import each other flatly (`from utils import ...`). `runner.py` therefore adds
-the directory to `sys.path` rather than importing it as a package. Keep that insert at
-module scope: batch workers are spawned and re-import the module before the metric
-imports run.
+The metric modules import their shared helpers relatively (`from .utils import ...`), so
+`musecpeval` must be installed (or the repo root on `sys.path`) for them to import.
+Batch workers are spawned rather than forked, so each child re-imports the package —
+an editable install keeps that working while you edit the metrics.
+
+`musecpeval/__init__.py` resolves the scoring functions lazily via `__getattr__`, so
+`import musecpeval` costs nothing and does not require msaf.
 
 Each metric module also has its own `__main__` block that scores a directory of pairs
-for that family alone, independent of `runner.py`. Beware that the flag spelling is not
-consistent between them: `rhythm_meter.py` takes `--orig-dir` / `--edit-dir`, while
-`harmony_tonality.py`, `melody_motif.py`, and `structural_form.py` take `--orig_dir` /
-`--edit_dir`.
+for that family alone, independent of the runner — e.g.
+`python -m musecpeval.metrics.rhythm_meter --orig-dir a/ --edit-dir b/`. Beware that the
+flag spelling is not consistent between them: `rhythm_meter.py` takes `--orig-dir` /
+`--edit-dir`, while `harmony_tonality.py`, `melody_motif.py`, and `structural_form.py`
+take `--orig_dir` / `--edit_dir`.

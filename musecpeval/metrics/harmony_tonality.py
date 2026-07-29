@@ -1,7 +1,7 @@
 from typing import Dict, Any
 import numpy as np
 import librosa
-from utils import circle_of_fifths_distance, cosine_sim, dtw_cosine, _safe_float
+from .utils import circle_of_fifths_distance, cosine_sim, dtw_cosine, _safe_float
 import sys
 from pathlib import Path
 from collections import defaultdict

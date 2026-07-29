@@ -8,3 +8,6 @@ __pycache__/
 *.ipynb
 *.jams
 results/
+*.egg-info/
+dist/
+build/

@@ -2,7 +2,7 @@ from typing import Dict, Any, Tuple
 import numpy as np
 import librosa
 import mir_eval
-from utils import _safe_float
+from .utils import _safe_float
 import sys
 from pathlib import Path
 from collections import defaultdict
