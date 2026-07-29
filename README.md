@@ -24,20 +24,40 @@ That is a quick way to confirm an install is sane.
 ## Install
 
 The metric code needs **numpy ≤ 2.2** — librosa depends on numba, and numba refuses
-newer numpy. A dedicated environment is the least painful route:
+newer numpy — so a dedicated environment is the least painful route:
 
 ```bash
 conda create -y -n musecpeval python=3.10
 conda activate musecpeval
-pip install "numpy<2.3" "scipy>=1.9" "librosa>=0.10" "soundfile>=0.12" "mir_eval>=0.7" tqdm
-pip install msaf                      # required by the structure metric
+
+pip install musecpeval          # or: pip install .        from a clone
+                                # or: pip install -e .     to work on the metrics
+```
+
+That installs the `musecpeval` command and the importable package:
+
+```python
+from musecpeval import harmony_score, melody_score, rhythm_score, structural_score
+
+harmony_score("original.wav", "edited.wav")
+```
+
+`--metrics structure` additionally needs **msaf**, which is not pulled in by default:
+its PyPI release is old and pins numpy/scipy versions that fight the rest of the stack,
+so install it yourself and expect to referee the pins.
+
+```bash
+pip install msaf                # or: pip install "musecpeval[structure]"
 ```
 
 Verify:
 
 ```bash
-python runner.py --ref path/to/file.wav --est path/to/file.wav
+musecpeval --ref path/to/file.wav --est path/to/file.wav
 ```
+
+`python -m musecpeval` is equivalent, and `python runner.py` still works from a clone
+without installing anything.
 
 ## Run
 
@@ -45,13 +65,13 @@ python runner.py --ref path/to/file.wav --est path/to/file.wav
 
 ```bash
 # JSON to stdout
-python runner.py --ref original.wav --est edited.wav
+musecpeval --ref original.wav --est edited.wav
 
 # JSON to a file
-python runner.py --ref original.wav --est edited.wav --out-json result.json
+musecpeval --ref original.wav --est edited.wav --out-json result.json
 
 # a subset of metrics
-python runner.py --ref original.wav --est edited.wav --metrics harmony rhythm
+musecpeval --ref original.wav --est edited.wav --metrics harmony rhythm
 ```
 
 ### Batch
@@ -60,16 +80,16 @@ Exactly one input source is required.
 
 ```bash
 # JSON manifest
-python runner.py --batch-json pairs.json --output-dir results/
+musecpeval --batch-json pairs.json --output-dir results/
 
 # CSV manifest
-python runner.py --batch-csv pairs.csv --output-dir results/
+musecpeval --batch-csv pairs.csv --output-dir results/
 
 # two flat directories, paired by filename
-python runner.py --ref-dir originals/ --est-dir edited/ --output-dir results/
+musecpeval --ref-dir originals/ --est-dir edited/ --output-dir results/
 
 # nested edits (edited/<section>/<slug>/001.wav) against flat originals
-python runner.py --ref-dir originals/ --est-dir edited/ --recursive --output-dir results/
+musecpeval --ref-dir originals/ --est-dir edited/ --recursive --output-dir results/
 ```
 
 ```json
@@ -136,12 +156,22 @@ Worker count is capped at the number of pairs.
 ## Repository layout
 
 ```
-runner.py              CLI: single-pair and batch evaluation
-musecpeval_metrics/    the four metric families
-  harmony_tonality.py  key relatedness, chroma similarity
-  rhythm_meter.py      tempo delta, beat F-measure
-  structural_form.py   segmentation agreement (needs msaf)
-  melody_motif.py      contour DTW, motif n-gram recall
-  utils.py             shared helpers
-requirements.txt
+musecpeval/
+  __init__.py          lazily re-exports the four scoring functions
+  __main__.py          `python -m musecpeval`
+  runner.py            CLI: single-pair and batch evaluation
+  metrics/             the four metric families
+    harmony_tonality.py  key relatedness, chroma similarity
+    rhythm_meter.py      tempo delta, beat F-measure
+    structural_form.py   segmentation agreement (needs msaf)
+    melody_motif.py      contour DTW, motif n-gram recall
+    utils.py             shared helpers
+pyproject.toml         deps, the [structure] extra, the `musecpeval` entry point
+requirements.txt       mirror of the dependency list, for `pip install -r`
+runner.py              shim, so `python runner.py` keeps working from a clone
 ```
+
+Each metric module also has its own `__main__` block that scores a directory of pairs
+for that family alone — `python -m musecpeval.metrics.rhythm_meter --orig-dir a/
+--edit-dir b/`. The flag spelling is not consistent between them: `rhythm_meter.py`
+takes `--orig-dir` / `--edit-dir`, the other three take `--orig_dir` / `--edit_dir`.
