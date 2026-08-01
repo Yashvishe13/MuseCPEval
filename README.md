@@ -35,7 +35,7 @@ newer numpy — so a dedicated environment is the least painful route:
 conda create -y -n musecpeval python=3.10
 conda activate musecpeval
 
-pip install musecpeval==0.1.0
+pip install musecpeval==0.2.0
 ```
 
 Pinning the version is the recommended form — the metric numbers are what you cite, so

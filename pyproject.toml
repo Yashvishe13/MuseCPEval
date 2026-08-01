@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "musecpeval"
-version = "0.1.0"
+version = "0.2.0"
 description = "Music context preservation metrics: how much of an original's harmony, rhythm, structure, and melody survives an edit"
 readme = "README.md"
 authors = [{ name = "Yash Vishe", email = "yashvisheyav@gmail.com" }]
