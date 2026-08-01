@@ -29,7 +29,7 @@ dependencies = [
 
 [project.optional-dependencies]
 # Required by the `structure` metric family only; the other three run without it.
-structure = ["msaf>=0.1.85"]
+structure = ["msaf>=0.1.80"]
 
 [project.scripts]
 musecpeval = "musecpeval.runner:main"
