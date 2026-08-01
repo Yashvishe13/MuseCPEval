@@ -21,6 +21,11 @@ estimate) returns `1.0` on the similarity metrics and `0.0` on the distance metr
 `mean_chroma_cosine` lands a few float ulps short of `1.0` rather than exactly on it.
 That is a quick way to confirm an install is sane.
 
+## Data
+
+The audio used for the objective evaluation is available on
+[Google Drive](https://drive.google.com/file/d/1KcMMKKes7gmxfvtBx9sEB7EWLeLfLf9M/view?usp=sharing).
+
 ## Install
 
 The metric code needs **numpy ≤ 2.2** — librosa depends on numba, and numba refuses
