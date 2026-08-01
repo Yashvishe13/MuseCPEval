@@ -26,7 +26,8 @@ Batch writes into --output-dir:
     summary.csv     flattened numeric columns, one row per pair
 
 Layout:
-    MetricRegistry      the four metric families and their output keys
+    MetricRegistry      the four metric families, their output keys, and the
+                        10 paper-reported metrics each one is pruned down to
     JsonCodec           JSON encode/decode, including numpy coercion
     PairPreprocessor    turn manifests or directories into normalized pair dicts
     ResultStore         all filesystem writes and reads under --output-dir
@@ -71,6 +72,38 @@ class MetricRegistry:
         "melody": ("melodic_content", melody_score),
     }
 
+    # The 10 metrics reported in the paper (§2), as dotted paths into each
+    # family's score dict. Scoring functions also return intermediates that are
+    # inputs to these numbers rather than metrics in their own right (e.g.
+    # harmony's unnormalized circle-of-fifths step count, which CoF is the
+    # [0, 1] normalization of); those are dropped from the record so the output
+    # is exactly the reported metric set.
+    #
+    #   harmony    CoF, ChromaSim, ChromaDTWS
+    #   rhythm     dBPM, BeatF, IG
+    #   structure  StructPairF, ARI
+    #   melody     ContourDTWS, MotifRec
+    PAPER_KEYS: dict[str, tuple[str, ...]] = {
+        "harmony": (
+            "key_relatedness.distance_norm_0to1",   # CoF
+            "chroma_similarity.mean_chroma_cosine",  # ChromaSim
+            "chroma_similarity.chroma_dtw_cosine",   # ChromaDTWS
+        ),
+        "rhythm": (
+            "delta_bpm_folded",                # dBPM
+            "beat_mir_eval.F-measure",         # BeatF
+            "beat_mir_eval.Information gain",  # IG
+        ),
+        "structure": (
+            "pairwise_f",  # StructPairF
+            "ari",         # ARI
+        ),
+        "melody": (
+            "contour_dtw_similarity",  # ContourDTWS
+            "motif_3gram_recall",      # MotifRec
+        ),
+    }
+
     @classmethod
     def cli_names(cls) -> list[str]:
         return list(cls.FAMILIES)
@@ -78,6 +111,36 @@ class MetricRegistry:
     @classmethod
     def resolve(cls, cli_name: str) -> tuple[str, Callable[[str, str], dict]]:
         return cls.FAMILIES[cli_name]
+
+    @classmethod
+    def keep_paper_keys(cls, cli_name: str, scores: dict) -> dict:
+        """Prune a family's score dict down to the paper's reported metrics.
+
+        Keeps the nesting the rest of the pipeline (and summary.csv column
+        names) already expects. "error" entries are always kept — they are
+        diagnostics, not metrics — and a family with no whitelist is passed
+        through untouched.
+        """
+        allowed = cls.PAPER_KEYS.get(cli_name)
+        if not allowed or not isinstance(scores, dict) or "error" in scores:
+            return scores
+
+        pruned: dict = {}
+        for path in allowed:
+            head, _, tail = path.partition(".")
+            if head not in scores:
+                continue
+            if not tail:
+                pruned[head] = scores[head]
+            elif isinstance(scores[head], dict) and tail in scores[head]:
+                pruned.setdefault(head, {})[tail] = scores[head][tail]
+
+        # A sub-dict that failed wholesale reports {"error": ...} instead of
+        # its metrics; keep that rather than silently emitting nothing.
+        for head, value in scores.items():
+            if isinstance(value, dict) and "error" in value and head not in pruned:
+                pruned[head] = value
+        return pruned
 
 
 class JsonCodec:
@@ -378,7 +441,9 @@ class MetricEvaluator:
             with warnings.catch_warnings(record=True) as caught:
                 warnings.simplefilter("always")
                 try:
-                    scores[output_key] = score_fn(ref_str, est_str)
+                    scores[output_key] = MetricRegistry.keep_paper_keys(
+                        cli_name, score_fn(ref_str, est_str)
+                    )
                 except Exception as exc:
                     scores[output_key] = {"error": f"{type(exc).__name__}: {exc}"}
                     self._note(f"  ! {output_key}: {scores[output_key]['error']}")
