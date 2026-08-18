@@ -1,7 +1,7 @@
 """MuseCPEval — music context preservation metrics.
 
-Scores how much of an original recording's harmony, rhythm, structure, and
-melody survives an edit.
+Scores how much of an original recording's harmony, rhythm, structure,
+melody, and timbre survives an edit.
 
     from musecpeval import harmony_score, rhythm_score
 
@@ -10,7 +10,7 @@ melody survives an edit.
 The CLI in :mod:`musecpeval.runner` (installed as ``musecpeval``) wraps the same
 functions for single pairs and for parallel batches.
 
-The four scoring functions are resolved lazily: importing this package does not
+The five scoring functions are resolved lazily: importing this package does not
 pull in librosa or mir_eval, and ``python -m musecpeval.metrics.<name>`` still
 runs a family's own directory-scoring CLI without double-import warnings.
 """
@@ -28,6 +28,7 @@ _LAZY = {
     "melody_score": "musecpeval.metrics.melody_motif",
     "rhythm_score": "musecpeval.metrics.rhythm_meter",
     "structural_score": "musecpeval.metrics.structural_form",
+    "timbre_score": "musecpeval.metrics.timbre",
 }
 
 __all__ = ["__version__", *_LAZY]

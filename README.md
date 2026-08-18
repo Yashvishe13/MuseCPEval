@@ -1,8 +1,8 @@
 # MuseCPEval
 
 Measures **music context preservation** between an original audio file and an edited
-version of it: how much of the original's harmony, rhythm, structure, and melody
-survives the edit.
+version of it: how much of the original's harmony, rhythm, structure, melody, and
+timbre survives the edit.
 
 Give it a reference/estimate pair and it returns a JSON object of scores. Give it a
 manifest or a pair of directories and it scores thousands of pairs in parallel.
@@ -15,8 +15,9 @@ manifest or a pair of directories and it scores thousands of pairs in parallel.
 | `rhythm` | `rhythm_meter` | `delta_bpm_folded`, `beat_mir_eval` (`F-measure`, `Information gain`) |
 | `structure` | `structural_form` | `pairwise_f`, `ari` |
 | `melody` | `melodic_content` | `contour_dtw_similarity`, `motif_3gram_recall` |
+| `timbre` | `timbre_texture` | `mfcc_skl_similarity`, `mean_mfcc_cosine` |
 
-All four run by default. Scoring an identical pair (same file as reference and
+All five run by default. Scoring an identical pair (same file as reference and
 estimate) returns `1.0` on the similarity metrics and `0.0` on the distance metrics —
 `mean_chroma_cosine` lands a few float ulps short of `1.0` rather than exactly on it.
 That is a quick way to confirm an install is sane.
@@ -35,7 +36,7 @@ newer numpy — so a dedicated environment is the least painful route:
 conda create -y -n musecpeval python=3.10
 conda activate musecpeval
 
-pip install musecpeval==0.2.0
+pip install musecpeval==0.3.0
 ```
 
 Pinning the version is the recommended form — the metric numbers are what you cite, so
@@ -60,7 +61,9 @@ pip install -e .                # editable, so edits to the metrics take effect
 Either way you get the `musecpeval` command and the importable package:
 
 ```python
-from musecpeval import harmony_score, melody_score, rhythm_score, structural_score
+from musecpeval import (
+    harmony_score, melody_score, rhythm_score, structural_score, timbre_score,
+)
 
 harmony_score("original.wav", "edited.wav")
 ```
@@ -158,7 +161,7 @@ pairs.** Use separate output directories for concurrent jobs.
 | `--recursive` | walk `--est-dir` subdirectories |
 | `--ext EXT` | extension for directory pairing (default `.wav`) |
 | `--output-dir DIR` | batch output directory (default `./results`) |
-| `--metrics ...` | any of `harmony rhythm structure melody` (default: all) |
+| `--metrics ...` | any of `harmony rhythm structure melody timbre` (default: all) |
 | `--n-workers N` | worker processes (default `min(8, cpus - 1)`) |
 | `--max-cpu` | use every CPU as a worker |
 | `--no-parallel` | run serially in one process |
@@ -180,14 +183,15 @@ Worker count is capped at the number of pairs.
 
 ```
 musecpeval/
-  __init__.py          lazily re-exports the four scoring functions
+  __init__.py          lazily re-exports the five scoring functions
   __main__.py          `python -m musecpeval`
   runner.py            CLI: single-pair and batch evaluation
-  metrics/             the four metric families
+  metrics/             the five metric families
     harmony_tonality.py  key relatedness, chroma similarity
     rhythm_meter.py      tempo delta, beat F-measure
     structural_form.py   segmentation agreement (needs msaf)
     melody_motif.py      contour DTW, motif n-gram recall
+    timbre.py            MFCC symmetric-KL similarity, mean-MFCC cosine
     utils.py             shared helpers
 pyproject.toml         deps, the [structure] extra, the `musecpeval` entry point
 requirements.txt       mirror of the dependency list, for `pip install -r`
@@ -197,4 +201,5 @@ runner.py              shim, so `python runner.py` keeps working from a clone
 Each metric module also has its own `__main__` block that scores a directory of pairs
 for that family alone — `python -m musecpeval.metrics.rhythm_meter --orig-dir a/
 --edit-dir b/`. The flag spelling is not consistent between them: `rhythm_meter.py`
-takes `--orig-dir` / `--edit-dir`, the other three take `--orig_dir` / `--edit_dir`.
+and `timbre.py` take `--orig-dir` / `--edit-dir`, the other three take `--orig_dir` /
+`--edit_dir`.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """MuseCPEval runner.
 
-Computes the four context-preservation metric families for reference/estimate
+Computes the five context-preservation metric families for reference/estimate
 audio pairs. All paths are supplied on the command line.
 
 Single pair:
@@ -26,8 +26,8 @@ Batch writes into --output-dir:
     summary.csv     flattened numeric columns, one row per pair
 
 Layout:
-    MetricRegistry      the four metric families, their output keys, and the
-                        10 paper-reported metrics each one is pruned down to
+    MetricRegistry      the five metric families, their output keys, and the
+                        12 paper-reported metrics each one is pruned down to
     JsonCodec           JSON encode/decode, including numpy coercion
     PairPreprocessor    turn manifests or directories into normalized pair dicts
     ResultStore         all filesystem writes and reads under --output-dir
@@ -56,6 +56,7 @@ from .metrics.harmony_tonality import harmony_score
 from .metrics.melody_motif import melody_score
 from .metrics.rhythm_meter import rhythm_score
 from .metrics.structural_form import structural_score
+from .metrics.timbre import timbre_score
 
 
 class MetricRegistry:
@@ -70,9 +71,10 @@ class MetricRegistry:
         "rhythm": ("rhythm_meter", rhythm_score),
         "structure": ("structural_form", structural_score),
         "melody": ("melodic_content", melody_score),
+        "timbre": ("timbre_texture", timbre_score),
     }
 
-    # The 10 metrics reported in the paper (§2), as dotted paths into each
+    # The 12 metrics reported in the paper (§2), as dotted paths into each
     # family's score dict. Scoring functions also return intermediates that are
     # inputs to these numbers rather than metrics in their own right (e.g.
     # harmony's unnormalized circle-of-fifths step count, which CoF is the
@@ -83,6 +85,7 @@ class MetricRegistry:
     #   rhythm     dBPM, BeatF, IG
     #   structure  StructPairF, ARI
     #   melody     ContourDTWS, MotifRec
+    #   timbre     TimbreSKLS, MFCCcos
     PAPER_KEYS: dict[str, tuple[str, ...]] = {
         "harmony": (
             "key_relatedness.distance_norm_0to1",   # CoF
@@ -101,6 +104,10 @@ class MetricRegistry:
         "melody": (
             "contour_dtw_similarity",  # ContourDTWS
             "motif_3gram_recall",      # MotifRec
+        ),
+        "timbre": (
+            "mfcc_skl_similarity",  # TimbreSKLS
+            "mean_mfcc_cosine",     # MFCCcos
         ),
     }
 
